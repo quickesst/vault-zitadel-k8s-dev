@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-setup
+  namespace: vault
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: vault-setup
+          image: hashicorp/vault:latest
+          env:
+            - name: VAULT_ADDR
+              value: "https://vault.vault.svc.cluster.local:8200"
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vault-root-token
+                  key: token
+            - name: NEON_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: neon-credentials
+                  key: host
+            - name: NEON_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: neon-credentials
+                  key: port
+            - name: NEON_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: neon-credentials
+                  key: database
+            - name: NEON_USER
+              valueFrom:
+                secretKeyRef:
+                  name: neon-credentials
+                  key: username
+            - name: NEON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: neon-credentials
+                  key: password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until vault status | grep -q "Sealed.*false"; do
+                echo "Waiting for Vault to be unsealed..."
+                sleep 3
+              done
+
+              vault secrets enable -path=secret kv-v2 || true
+              vault kv put secret/zitadel/db \
+                host="$NEON_HOST" \
+                port="$NEON_PORT" \
+                database="$NEON_DATABASE" \
+                username="$NEON_USER" \
+                password="$NEON_PASSWORD"
+
+              vault policy write zitadel - <<POLICY
+              path "secret/data/zitadel/*" {
+                capabilities = ["read"]
+              }
+              POLICY
+
+              TOKEN=$(vault token create \
+                -policy=zitadel \
+                -display-name=zitadel-injector \
+                -no-default-policy \
+                -format=json | jq -r '.auth.client_token')
+
+              kubectl create secret generic vault-injector-token \
+                --from-literal=token=$TOKEN \
+                --namespace=vault \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+              echo "Vault setup complete."

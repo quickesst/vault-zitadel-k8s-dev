@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-entrypoint
+  namespace: vault
+data:
+  entrypoint.sh: |
+    #!/bin/bash
+
+    if [[ $(vault status | grep "Initialized" | awk '{print $2}') == false ]]
+    then
+      if ! [ -d /tmp/vault ]; then
+        mkdir -p /tmp/vault;
+        touch /tmp/vault/init.txt
+      fi
+
+      vault operator init -key-shares=1 -key-threshold=1 &> /tmp/vault/init.txt
+
+      if ! [ -f /vault/secrets/key ]; then
+          touch /vault/secrets/key
+          chmod 777 /vault/secrets/key
+      fi
+
+      if ! [ -f /vault/secrets/token ]; then
+        touch /vault/secrets/token
+        chmod 777 /vault/secrets/token
+      fi
+
+      cat /tmp/vault/init.txt | grep 'Unseal' | cut -f2 -d":" | xargs &> /vault/secrets/key
+      cat /tmp/vault/init.txt | grep 'Token'  | cut -f2 -d":" | xargs &> /vault/secrets/token
+
+      rm /tmp/vault/init.txt
+
+      kubectl create secret generic vault-root-token \
+        --from-literal=token=$(cat /vault/secrets/token) \
+        --namespace=vault \
+        --dry-run=client -o yaml | kubectl apply -f -
+    fi
+
+    if [[ $(vault status | grep "Sealed" | awk '{print $2}') == true ]]
+    then
+      vault operator unseal $(cat /vault/secrets/key)
+    fi

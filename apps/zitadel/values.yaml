@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zitadel-values
+  namespace: zitadel
+data:
+  values.yaml: |
+    zitadel:
+      masterkey: "CHANGEME_32_CHARS_MINIMUM_KEY___"
+      configmapConfig:
+        ExternalSecure: false
+        ExternalDomain: localhost
+        ExternalPort: 8080
+        TLS:
+          Enabled: false
+        Database:
+          Postgres:
+            Host: ""
+            Port: 5432
+            Database: zitadel
+            User:
+              Username: ""
+              Password: ""
+              SSL:
+                Mode: require
+            Admin:
+              Username: ""
+              Password: ""
+              SSL:
+                Mode: require
+
+    replicaCount: 1
+
+    podAnnotations:
+      vault.hashicorp.com/agent-inject: "true"
+      vault.hashicorp.com/agent-inject-secret-db: "secret/data/zitadel/db"
+      vault.hashicorp.com/agent-inject-template-db: |
+        {{- with secret "secret/data/zitadel/db" -}}
+        DB_HOST={{ .Data.data.host }}
+        DB_PORT={{ .Data.data.port }}
+        DB_NAME={{ .Data.data.database }}
+        DB_USER={{ .Data.data.username }}
+        DB_PASSWORD={{ .Data.data.password }}
+        {{- end }}
+      vault.hashicorp.com/role: "zitadel"
+      vault.hashicorp.com/tls-skip-verify: "true"
+
+    service:
+      type: ClusterIP
+      port: 8080
+
+    ingress:
+      enabled: true
+      className: traefik
+      hosts:
+        - host: zitadel.local
+          paths:
+            - path: /
+              pathType: Prefix
