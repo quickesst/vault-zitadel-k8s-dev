@@ -36,18 +36,41 @@ data:
       vault.hashicorp.com/agent-inject-secret-db: "secret/data/zitadel/db"
       vault.hashicorp.com/agent-inject-template-db: |
         {{- with secret "secret/data/zitadel/db" -}}
-        DB_HOST={{ .Data.data.host }}
-        DB_PORT={{ .Data.data.port }}
-        DB_NAME={{ .Data.data.database }}
-        DB_USER={{ .Data.data.username }}
-        DB_PASSWORD={{ .Data.data.password }}
+        Database:
+          Postgres:
+            Host: "{{ .Data.data.host }}"
+            Port: {{ .Data.data.port }}
+            Database: "{{ .Data.data.database }}"
+            User:
+              Username: "{{ .Data.data.username }}"
+              Password: "{{ .Data.data.password }}"
+              SSL:
+                Mode: require
+            Admin:
+              Username: "{{ .Data.data.username }}"
+              Password: "{{ .Data.data.password }}"
+              SSL:
+                Mode: require
         {{- end }}
+      vault.hashicorp.com/agent-inject-file-db: "config.yaml"
       vault.hashicorp.com/role: "zitadel"
       vault.hashicorp.com/tls-skip-verify: "true"
 
     service:
       type: ClusterIP
       port: 8080
+
+    extraVolumes:
+      - name: vault-secrets
+        emptyDir: {}
+
+    extraVolumeMounts:
+      - name: vault-secrets
+        mountPath: /vault/secrets
+
+    env:
+      - name: ZITADEL_CONFIG_FILES
+        value: "/vault/secrets/config.yaml"
 
     ingress:
       enabled: true

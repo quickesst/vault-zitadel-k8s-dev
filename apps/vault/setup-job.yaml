@@ -8,6 +8,7 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: vault-init
       containers:
         - name: vault-setup
           image: hashicorp/vault:latest
@@ -73,7 +74,7 @@ spec:
                 -policy=zitadel \
                 -display-name=zitadel-injector \
                 -no-default-policy \
-                -format=json | jq -r '.auth.client_token')
+                -format=json | grep '"client_token"' | awk -F'"' '{print $4}')
 
               kubectl create secret generic vault-injector-token \
                 --from-literal=token=$TOKEN \
