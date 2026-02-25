@@ -91,7 +91,7 @@ data:
             - /bin/sh
             - -c
             - |
-              until vault status 2>/dev/null; do
+              until vault status 2>/dev/null | grep -q "Initialized"; do
                 echo "Waiting for Vault to start..."
                 sleep 3
               done
