@@ -23,6 +23,17 @@ data:
       extraEnvironmentVars:
         VAULT_SKIP_VERIFY: "true"
 
+      readinessProbe:
+        enabled: true
+        path: "/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204"
+        port: 8200
+
+      livenessProbe:
+        enabled: true
+        path: "/v1/sys/health?standbyok=true"
+        port: 8200
+        initialDelaySeconds: 60
+
       dataStorage:
         enabled: true
         size: 1Gi
@@ -83,6 +94,7 @@ data:
           traefik.ingress.kubernetes.io/router.tls: "true"
           traefik.ingress.kubernetes.io/service.serversscheme: https
           traefik.ingress.kubernetes.io/service.passHostHeader: "true"
+          traefik.ingress.kubernetes.io/service.serversTransport: vault-vault-skip-verify@kubernetescrd
         hosts:
           - host: vault.local
             paths:
