@@ -51,12 +51,13 @@ spec:
             - /bin/sh
             - -c
             - |
-              until vault status | grep -q "Sealed.*false"; do
+              until vault status 2>/dev/null | grep -q "Sealed.*false"; do
                 echo "Waiting for Vault to be unsealed..."
                 sleep 3
               done
 
               vault secrets enable -path=secret kv-v2 || true
+
               vault kv put secret/zitadel/db \
                 host="$NEON_HOST" \
                 port="$NEON_PORT" \
@@ -64,21 +65,30 @@ spec:
                 username="$NEON_USER" \
                 password="$NEON_PASSWORD"
 
+              # Générer la masterkey seulement si elle n'existe pas déjà
+              if ! vault kv get secret/zitadel/masterkey > /dev/null 2>&1; then
+                MASTERKEY=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)
+                vault kv put secret/zitadel/masterkey key="$MASTERKEY"
+                echo "Masterkey generated and stored."
+              else
+                echo "Masterkey already exists, skipping."
+              fi
+
+              vault auth enable kubernetes || true
+
+              vault write auth/kubernetes/config \
+                kubernetes_host="https://kubernetes.default.svc"
+
               vault policy write zitadel - <<POLICY
               path "secret/data/zitadel/*" {
                 capabilities = ["read"]
               }
               POLICY
 
-              TOKEN=$(vault token create \
-                -policy=zitadel \
-                -display-name=zitadel-injector \
-                -no-default-policy \
-                -format=json | grep '"client_token"' | awk -F'"' '{print $4}')
-
-              kubectl create secret generic vault-injector-token \
-                --from-literal=token=$TOKEN \
-                --namespace=vault \
-                --dry-run=client -o yaml | kubectl apply -f -
+              vault write auth/kubernetes/role/zitadel \
+                bound_service_account_names=zitadel \
+                bound_service_account_namespaces=zitadel \
+                policies=zitadel \
+                ttl=1h
 
               echo "Vault setup complete."

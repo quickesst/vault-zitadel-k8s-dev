@@ -33,10 +33,6 @@ data:
           hostPath:
             path: /opt/vault/secrets
             type: DirectoryOrCreate
-        - name: entrypoint
-          configMap:
-            name: vault-entrypoint
-            defaultMode: 0755
         - name: vault-certs
           emptyDir: {}
 
@@ -78,35 +74,6 @@ data:
           volumeMounts:
             - name: vault-certs
               mountPath: /vault/certs
-
-      extraContainers:
-        - name: init-vault
-          image: hashicorp/vault:latest
-          env:
-            - name: VAULT_ADDR
-              value: "https://127.0.0.1:8200"
-            - name: VAULT_SKIP_VERIFY
-              value: "true"
-          command:
-            - /bin/sh
-            - -c
-            - |
-              until vault status 2>/dev/null | grep -q "Initialized"; do
-                echo "Waiting for Vault to start..."
-                sleep 3
-              done
-              /vault/entrypoint.sh
-              sleep infinity
-          volumeMounts:
-            - name: vault-secrets
-              mountPath: /vault/secrets
-            - name: entrypoint
-              mountPath: /vault/entrypoint.sh
-              subPath: entrypoint.sh
-          securityContext:
-            capabilities:
-              add:
-                - IPC_LOCK
 
       ingress:
         enabled: true

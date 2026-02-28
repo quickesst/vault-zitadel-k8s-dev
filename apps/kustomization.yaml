@@ -4,12 +4,13 @@ resources:
   - vault/namespace.yaml
   - vault/serviceaccount.yaml
   - vault/helmrepository.yaml
-  - vault/entrypoint-configmap.yaml
   - vault/values.yaml
   - vault/helmrelease.yaml
   - vault/serverstransport.yaml
+  - vault/init-job.yaml
   - vault/setup-job.yaml
   - zitadel/namespace.yaml
+  - zitadel/serviceaccount.yaml
   - zitadel/helmrepository.yaml
   - zitadel/values.yaml
   - zitadel/helmrelease.yaml

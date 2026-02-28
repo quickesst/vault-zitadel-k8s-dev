@@ -6,7 +6,7 @@ metadata:
 data:
   values.yaml: |
     zitadel:
-      masterkey: "CHANGEME_32_CHARS_MINIMUM_KEY___"
+      masterkey: ""
       configmapConfig:
         ExternalSecure: false
         ExternalDomain: localhost
@@ -53,6 +53,12 @@ data:
                 Mode: require
         {{- end }}
       vault.hashicorp.com/agent-inject-file-db: "config.yaml"
+      vault.hashicorp.com/agent-inject-secret-masterkey: "secret/data/zitadel/masterkey"
+      vault.hashicorp.com/agent-inject-template-masterkey: |
+        {{- with secret "secret/data/zitadel/masterkey" -}}
+        {{ .Data.data.key }}
+        {{- end }}
+      vault.hashicorp.com/agent-inject-file-masterkey: "masterkey"
       vault.hashicorp.com/role: "zitadel"
       vault.hashicorp.com/tls-skip-verify: "true"
 
@@ -71,6 +77,8 @@ data:
     env:
       - name: ZITADEL_CONFIG_FILES
         value: "/vault/secrets/config.yaml"
+      - name: ZITADEL_MASTERKEY_FILE
+        value: "/vault/secrets/masterkey"
 
     ingress:
       enabled: true

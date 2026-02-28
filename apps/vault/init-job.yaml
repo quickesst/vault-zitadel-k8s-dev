@@ -1,0 +1,86 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-init
+  namespace: vault
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: vault-init
+      initContainers:
+        - name: vault-init
+          image: hashicorp/vault:latest
+          env:
+            - name: VAULT_ADDR
+              value: "https://vault.vault.svc.cluster.local:8200"
+            - name: VAULT_SKIP_VERIFY
+              value: "true"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until vault status 2>/dev/null | grep -q "Initialized"; do
+                echo "Waiting for Vault to be reachable..."
+                sleep 3
+              done
+
+              if vault status 2>/dev/null | grep "Initialized" | grep -q "false"; then
+                echo "Initializing Vault..."
+                vault operator init -key-shares=1 -key-threshold=1 > /tmp/init.txt
+
+                UNSEAL_KEY=$(grep 'Unseal Key 1' /tmp/init.txt | awk '{print $NF}')
+                ROOT_TOKEN=$(grep 'Initial Root Token' /tmp/init.txt | awk '{print $NF}')
+
+                echo "$UNSEAL_KEY" > /shared/key
+                echo "$ROOT_TOKEN" > /shared/token
+
+                vault operator unseal "$UNSEAL_KEY"
+                echo "Vault initialized and unsealed."
+              elif vault status 2>/dev/null | grep "Sealed" | grep -q "true"; then
+                echo "Vault already initialized, unsealing..."
+                vault operator unseal "$(cat /opt/vault/secrets/key)"
+                echo "Vault unsealed."
+                cp /opt/vault/secrets/token /shared/token 2>/dev/null || true
+              else
+                echo "Vault already initialized and unsealed."
+                cp /opt/vault/secrets/token /shared/token 2>/dev/null || true
+              fi
+          volumeMounts:
+            - name: shared
+              mountPath: /shared
+            - name: vault-secrets
+              mountPath: /opt/vault/secrets
+
+      containers:
+        - name: create-secret
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              if [ -f /shared/token ]; then
+                kubectl create secret generic vault-root-token \
+                  --from-literal=token="$(cat /shared/token)" \
+                  --namespace=vault \
+                  --dry-run=client -o yaml | kubectl apply -f -
+
+                cp /shared/key /opt/vault/secrets/key 2>/dev/null || true
+                echo "Secret created."
+              else
+                echo "No token found, skipping secret creation."
+              fi
+          volumeMounts:
+            - name: shared
+              mountPath: /shared
+            - name: vault-secrets
+              mountPath: /opt/vault/secrets
+
+      volumes:
+        - name: shared
+          emptyDir: {}
+        - name: vault-secrets
+          hostPath:
+            path: /opt/vault/secrets
+            type: DirectoryOrCreate
