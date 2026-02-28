@@ -9,6 +9,18 @@ spec:
     spec:
       restartPolicy: OnFailure
       serviceAccountName: vault-init
+      initContainers:
+        - name: wait-for-vault-token
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until kubectl get secret vault-root-token -n vault > /dev/null 2>&1; do
+                echo "Waiting for vault-root-token secret..."
+                sleep 5
+              done
+              echo "Secret found, proceeding."
       containers:
         - name: vault-setup
           image: hashicorp/vault:latest
