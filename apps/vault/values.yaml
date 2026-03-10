@@ -9,6 +9,7 @@ data:
   values.yaml: |
     global:
       enabled: true
+      tlsDisable: true
 
     injector:
       enabled: true
