@@ -3,6 +3,8 @@ kind: ConfigMap
 metadata:
   name: zitadel-values
   namespace: zitadel
+  labels:
+    reconcile.fluxcd.io/watch: Enabled
 data:
   values.yaml: |
     zitadel:
