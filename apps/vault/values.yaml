@@ -9,7 +9,7 @@ data:
   values.yaml: |
     global:
       enabled: true
-      tlsDisable: true
+      tlsDisable: false
 
     injector:
       enabled: true
@@ -28,16 +28,10 @@ data:
         
       readinessProbe:
         enabled: true
-        path: "/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204"
-        port: 8200
-        scheme: HTTPS
 
       livenessProbe:
         enabled: true
-        path: "/v1/sys/health?standbyok=true"
-        port: 8200
         initialDelaySeconds: 60
-        scheme: HTTPS
 
       dataStorage:
         enabled: true
