@@ -24,7 +24,6 @@ data:
 
       extraEnvironmentVars:
         VAULT_SKIP_VERIFY: "true"
-        VAULT_ADDR: "https://127.0.0.1:8200"
         
       readinessProbe:
         enabled: true
