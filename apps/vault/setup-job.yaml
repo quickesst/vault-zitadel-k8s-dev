@@ -91,8 +91,6 @@ spec:
                 echo "Masterkey already exists, skipping."
               fi
 
-              echo -n "$MASTERKEY" > /shared/masterkey
-
               vault auth enable kubernetes || true
 
               vault write auth/kubernetes/config \
@@ -110,6 +108,28 @@ spec:
                 policies=zitadel \
                 ttl=1h
 
+              # Écrire le masterkey dans /shared
+              echo -n "$MASTERKEY" > /shared/masterkey
+
+              # Écrire la config DB dans /shared
+              cat > /shared/db-config.yaml <<EOF
+              Database:
+                Postgres:
+                  Host: "${NEON_HOST}"
+                  Port: ${NEON_PORT}
+                  Database: "${NEON_DATABASE}"
+                  User:
+                    Username: "${NEON_USER}"
+                    Password: "${NEON_PASSWORD}"
+                    SSL:
+                      Mode: require
+                  Admin:
+                    Username: "${NEON_USER}"
+                    Password: "${NEON_PASSWORD}"
+                    SSL:
+                      Mode: require
+              EOF
+
               echo "Vault setup complete."
       containers:
         - name: create-k8s-secrets
@@ -123,6 +143,11 @@ spec:
             - |
               kubectl create secret generic zitadel-masterkey \
                 --from-literal=masterkey="$(cat /shared/masterkey)" \
+                --namespace=zitadel \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+              kubectl create secret generic zitadel-db-config \
+                --from-file=config-yaml=/shared/db-config.yaml \
                 --namespace=zitadel \
                 --dry-run=client -o yaml | kubectl apply -f -
 

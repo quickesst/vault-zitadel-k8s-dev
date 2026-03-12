@@ -9,70 +9,19 @@ data:
   values.yaml: |
     zitadel:
       masterkeySecretName: zitadel-masterkey
+      configSecretName: zitadel-db-config
       configmapConfig:
         ExternalSecure: false
         ExternalDomain: localhost
         ExternalPort: 8080
         TLS:
           Enabled: false
-        Database:
-          Postgres:
-            Host: ""
-            Port: 5432
-            Database: zitadel
-            User:
-              Username: ""
-              Password: ""
-              SSL:
-                Mode: require
-            Admin:
-              Username: ""
-              Password: ""
-              SSL:
-                Mode: require
 
     replicaCount: 1
-
-    podAnnotations:
-      vault.hashicorp.com/agent-inject: "true"
-      vault.hashicorp.com/agent-inject-secret-db: "secret/data/zitadel/db"
-      vault.hashicorp.com/agent-inject-template-db: |
-        {{- with secret "secret/data/zitadel/db" -}}
-        Database:
-          Postgres:
-            Host: "{{ .Data.data.host }}"
-            Port: {{ .Data.data.port }}
-            Database: "{{ .Data.data.database }}"
-            User:
-              Username: "{{ .Data.data.username }}"
-              Password: "{{ .Data.data.password }}"
-              SSL:
-                Mode: require
-            Admin:
-              Username: "{{ .Data.data.username }}"
-              Password: "{{ .Data.data.password }}"
-              SSL:
-                Mode: require
-        {{- end }}
-      vault.hashicorp.com/agent-inject-file-db: "config.yaml"
-      vault.hashicorp.com/role: "zitadel"
-      vault.hashicorp.com/tls-skip-verify: "true"
 
     service:
       type: ClusterIP
       port: 8080
-
-    extraVolumes:
-      - name: vault-secrets
-        emptyDir: {}
-
-    extraVolumeMounts:
-      - name: vault-secrets
-        mountPath: /vault/secrets
-
-    env:
-      - name: ZITADEL_CONFIG_FILES
-        value: "/vault/secrets/config.yaml"
 
     ingress:
       enabled: true
