@@ -27,6 +27,10 @@ data:
 
       livenessProbe:
         enabled: true
+        execCommand:
+          - /bin/sh
+          - -ec
+          - vault status -tls-skip-verify
         initialDelaySeconds: 60
 
       dataStorage:
