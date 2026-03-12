@@ -1,7 +1,0 @@
-apiVersion: traefik.io/v1alpha1
-kind: ServersTransport
-metadata:
-  name: vault-skip-verify
-  namespace: vault
-spec:
-  insecureSkipVerify: true

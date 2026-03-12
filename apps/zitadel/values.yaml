@@ -12,8 +12,8 @@ data:
       configSecretName: zitadel-db-config
       configmapConfig:
         ExternalSecure: false
-        ExternalDomain: localhost
-        ExternalPort: 8080
+        ExternalDomain: zitadel.local
+        ExternalPort: 80
         TLS:
           Enabled: false
 

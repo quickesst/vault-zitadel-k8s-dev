@@ -6,7 +6,6 @@ resources:
   - vault/helmrepository.yaml
   - vault/values.yaml
   - vault/helmrelease.yaml
-  - vault/serverstransport.yaml
   - vault/init-job.yaml
   - vault/setup-job.yaml
   - zitadel/namespace.yaml
